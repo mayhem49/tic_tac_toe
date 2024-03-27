@@ -1,6 +1,3 @@
-defmodule TicTacToe do
-end
-
 defmodule Board do
   # TODO: remove symbols altogether
   defstruct state: %{}, size: nil
@@ -18,7 +15,7 @@ defmodule Board do
       end)
       |> Map.new()
 
-    %Board{state: state, size: size}
+    %__MODULE__{state: state, size: size}
   end
 
   def new(), do: new(@default_size)
@@ -77,5 +74,18 @@ defmodule Board do
     end
 
     check_horizontal_and_vertical.() || check_diagonal.()
+  end
+
+  def print(%Board{state: state, size: size} = _board_state) do
+    1..size
+    |> Enum.map(fn row ->
+      1..size
+      |> Enum.map(fn col ->
+        state
+        |> Map.get({row, col})
+        |> to_string()
+      end)
+    end)
+    |> TablePrint.print({size, size}, 7)
   end
 end
