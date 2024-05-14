@@ -1,6 +1,9 @@
 defmodule Board do
   # TODO: remove symbols altogether
-  defstruct state: %{}, size: nil
+
+  @enforce_keys [:size, :state, :played_cells]
+  defstruct [:size, :state, :played_cells]
+
   @players [:o, :x]
   @default_size 3
 
@@ -15,12 +18,12 @@ defmodule Board do
       end)
       |> Map.new()
 
-    %__MODULE__{state: state, size: size}
+    %__MODULE__{state: state, size: size, played_cells: 0}
   end
 
   def new(), do: new(@default_size)
 
-  def play(%{state: state} = board_state, {x, y} = coord, player)
+  def play(%{state: state} = board, player, {x, y} = coord)
       when player in @players do
     case Map.fetch(state, coord) do
       :error ->
@@ -28,7 +31,8 @@ defmodule Board do
 
       {:ok, nil} ->
         new_state = Map.put(state, coord, player)
-        %{board_state | state: new_state}
+        new_board = %{board | state: new_state, played_cells: board.played_cells + 1}
+        {:ok, new_board, game_status(new_board, player)}
 
       {:ok, _error} ->
         {:error, "Already played in coordinates (#{x},#{y}"}
@@ -76,7 +80,18 @@ defmodule Board do
     check_horizontal_and_vertical.() || check_diagonal.()
   end
 
-  def print(%Board{state: state, size: size} = _board_state) do
+  # at the end of the match is_winner?() is called twice once by is_draw and once by the game module to check
+  defp all_cells_played?(%Board{size: size} = board), do: board.played_cells == size * size
+
+  def game_status(%Board{} = board, player) do
+    cond do
+      is_winner?(board, player) -> :winner
+      all_cells_played?(board) -> :draw
+      true -> :running
+    end
+  end
+
+  def print(%Board{state: state, size: size} = _board) do
     1..size
     |> Enum.map(fn row ->
       1..size
@@ -86,6 +101,7 @@ defmodule Board do
         |> to_string()
       end)
     end)
+    |> IO.inspect()
     |> TablePrint.print({size, size}, 7)
   end
 end
