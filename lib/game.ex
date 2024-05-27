@@ -23,11 +23,11 @@ defmodule TicTacToe.Game do
 
     game =
       case Board.play(game.board, current_symbol, coord) do
-        {:ok, board, game_status} ->
-          %{game | board: board}
+        {:ok, new_board} ->
+          %{game | board: new_board}
           |> notify_current_player({:move_success, coord})
           |> notify_alternate_player({:move_action, coord})
-          |> manage_game_status(game_status)
+          |> manage_game_status(Board.game_status(new_board, current_symbol))
 
         {:error, reason} ->
           game
@@ -50,6 +50,13 @@ defmodule TicTacToe.Game do
         game
         |> notify_current_player(:winner)
         |> notify_alternate_player(:loser)
+
+      :loser ->
+        IO.puts("ERROR this shouldn't have happened")
+
+        game
+        |> notify_current_player(:loser)
+        |> notify_alternate_player(:winner)
 
       :draw ->
         game |> notify_both_players(:draw)

@@ -4,12 +4,12 @@ defmodule TicTacToe do
   def start(_start_type, _start_args) do
     children = [
       {Registry, keys: :unique, name: TicTacToe.Registry},
-      {TicTacToe.GameSupervisor, [:a12, :f34]}
+      TicTacToe.GameSupervisor
     ]
 
     return_value = Supervisor.start_link(children, strategy: :one_for_all)
 
-    TicTacToe.GameServer.start_game(:game, :p1, :p2)
+    TicTacToe.GameServer.start_game(:game, {:player, :interactive}, {:bot, :autoplay})
     Process.sleep(200)
     return_value
   end

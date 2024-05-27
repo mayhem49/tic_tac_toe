@@ -21,10 +21,10 @@ defmodule TicTacToe.SingleGameSupervisor do
 
   @impl true
   # def init([game_id, player1, player2]) do
-  def init({game_id, player1, player2}) do
+  def init({game_id, {player1, player1_type}, {player2, player2_type}}) do
     children = [
-      {TicTacToe.Player, {game_id, player1, :interactive, :o}},
-      {TicTacToe.Player, {game_id, player2, :interactive, :x}},
+      {TicTacToe.Player, {game_id, player1, player1_type, :o}},
+      {TicTacToe.Player, {game_id, player2, player2_type, :x}},
       {TicTacToe.GameServer, {game_id, player1, player2}}
     ]
 

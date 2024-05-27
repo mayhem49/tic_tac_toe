@@ -10,7 +10,7 @@ defmodule TicTacToe.Player do
   # TicTacToe.GameServer.start_game :game, :p1, :p2
 
   def child_spec({_, player_id, _, _} = arg) do
-      %{
+    %{
       id: player_id,
       start: {__MODULE__, :start_link, [arg]}
     }
@@ -42,12 +42,18 @@ defmodule TicTacToe.Player do
     print_message(state, "move")
     %{game_id: game_id, player_id: player_id} = state
 
-    case state.player_type do
-      :interactive ->
-        Board.print(state.board)
-        move = read_move(state)
-        GameServer.move(game_id, player_id, move)
-    end
+    Board.print(state.board)
+
+    move =
+      case state.player_type do
+        :interactive ->
+          read_move(state)
+
+        :autoplay ->
+          Board.minmax(state.board, state.symbol)
+      end
+
+    GameServer.move(game_id, player_id, move)
 
     {:noreply, state}
   end
@@ -78,7 +84,7 @@ defmodule TicTacToe.Player do
 
   @impl true
   def handle_cast({:move_action, {x, y} = coord}, state) do
-    {:ok, board, _game_status} = Board.play(state.board, state.symbol, coord)
+    {:ok, board} = Board.play(state.board, state.alternate_symbol, coord)
     print_message(state, "opponent_move(#{x}, #{y})")
 
     {:noreply, %{state | board: board}}
@@ -86,7 +92,7 @@ defmodule TicTacToe.Player do
 
   @impl true
   def handle_cast({:move_success, {x, y} = coord}, state) do
-    {:ok, board, _game_status} = Board.play(state.board, state.alternate_symbol, coord)
+    {:ok, board} = Board.play(state.board, state.symbol, coord)
     print_message(state, "move success(#{x}, #{y})")
     {:noreply, %{state | board: board}}
   end

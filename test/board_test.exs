@@ -18,7 +18,7 @@ defmodule BoardTest do
   test "plays in empty cells only" do
     board = Board.new()
 
-    {:ok, board, _game_status} =
+    {:ok, board} =
       board
       |> play(:o, {1, 1})
       |> play(:x, {2, 1})
@@ -45,9 +45,8 @@ defmodule BoardTest do
     assert_raise FunctionClauseError, fn -> Board.play(board, :rr, {1, 2}) end
   end
 
-  test "returns correct game_status" do
-    # check anti diagonal matched winner
-    {:ok, _board, game_status} =
+  test "returns correct game status relative to the player" do
+    {:ok, board} =
       Board.new()
       |> play(:o, {1, 3})
       |> play(:x, {3, 2})
@@ -55,10 +54,39 @@ defmodule BoardTest do
       |> play(:x, {2, 3})
       |> play(:o, {3, 1})
 
-    assert game_status == :winner
+    {:winner, :o} = board.status
+    assert :winner = Board.game_status(board, :o)
+    assert :loser = Board.game_status(board, :x)
+
+    {:ok, board} =
+      Board.new()
+      |> play(:o, {1, 3})
+      |> play(:x, {3, 2})
+
+    assert :running = Board.game_status(board, :o)
+    assert :running = Board.game_status(board, :x)
+
+    {:ok, board} = get_draw_game()
+    assert :draw = Board.game_status(board, :o)
+    assert :draw = Board.game_status(board, :x)
+  end
+
+  test "game is in correct state(game_status test)" do
+    # check anti diagonal matched winner
+    {:ok, board} =
+      Board.new()
+      |> play(:o, {1, 3})
+      |> play(:x, {3, 2})
+      |> play(:o, {2, 2})
+      |> play(:x, {2, 3})
+      |> play(:o, {3, 1})
+
+    assert {:winner, :o} == board.status
+    assert :winner = Board.game_status(board, :o)
+    assert :loser = Board.game_status(board, :x)
 
     # check diagonal winner 
-    {:ok, _board, game_status} =
+    {:ok, board} =
       Board.new()
       |> play(:o, {3, 1})
       |> play(:x, {2, 2})
@@ -68,10 +96,10 @@ defmodule BoardTest do
       |> play(:x, {3, 3})
 
     # check anti diagonal matched winner
-    assert game_status == :winner
+    assert board.status == {:winner, :x}
 
     # check horizontal matched winner
-    {:ok, _board, game_status} =
+    {:ok, board} =
       Board.new()
       |> play(:o, {1, 1})
       |> play(:x, {3, 3})
@@ -80,10 +108,10 @@ defmodule BoardTest do
       |> play(:o, {2, 1})
       |> play(:x, {1, 3})
 
-    assert game_status == :winner
+    assert board.status == {:winner, :x}
 
     # check game running stae
-    {:ok, _board, game_status} =
+    {:ok, board} =
       Board.new()
       |> play(:o, {1, 1})
       |> play(:x, {3, 2})
@@ -94,10 +122,10 @@ defmodule BoardTest do
       |> play(:o, {3, 1})
       |> play(:x, {2, 1})
 
-    assert game_status == :running
+    assert board.status == :running
 
     # check game draw
-    {:ok, _board, game_status} =
+    {:ok, board} =
       Board.new()
       |> play(:o, {1, 1})
       |> play(:x, {1, 2})
@@ -109,14 +137,27 @@ defmodule BoardTest do
       |> play(:x, {3, 3})
       |> play(:o, {2, 1})
 
-    assert game_status == :draw
+    assert board.status == :draw
   end
 
-  defp play({:ok, board, _game_status}, player, coord) do
+  defp play({:ok, board}, player, coord) do
     Board.play(board, player, coord)
   end
 
   defp play(board, player, coord) do
     Board.play(board, player, coord)
+  end
+
+  defp get_draw_game() do
+    Board.new()
+    |> play(:o, {1, 1})
+    |> play(:x, {1, 2})
+    |> play(:o, {1, 3})
+    |> play(:x, {2, 2})
+    |> play(:o, {2, 3})
+    |> play(:x, {3, 1})
+    |> play(:o, {3, 2})
+    |> play(:x, {3, 3})
+    |> play(:o, {2, 1})
   end
 end
