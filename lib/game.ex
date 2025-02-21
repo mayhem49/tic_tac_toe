@@ -13,6 +13,8 @@ defmodule TicTacToe.Game do
       status: :running
     }
 
+    IO.inspect player1
+    IO.inspect player2
     game
     |> notify_current_player(:move)
     |> return_intructions_and_game()

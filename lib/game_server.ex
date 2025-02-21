@@ -1,14 +1,14 @@
-defmodule TicTacToe.GameServer do
+defmodule Callbreak.GameServer do
   use GenServer
 
-  alias TicTacToe.{Game, Player}
+  alias Callbreak.{Game, Player}
   ## supervisor related stuff
   def start_game(game_id, player1, player2) do
     IO.puts("GameServer.start_game")
 
     DynamicSupervisor.start_child(
-      TicTacToe.GameSupervisor,
-      {TicTacToe.SingleGameSupervisor, {game_id, player1, player2}}
+      Callbreak.GameSupervisor,
+      {Callbreak.SingleGameSupervisor, {game_id, player1, player2}}
     )
   end
 
@@ -16,12 +16,12 @@ defmodule TicTacToe.GameServer do
     IO.puts("GameServer.start_link")
 
     GenServer.start_link(__MODULE__, {:game_id, player1, player2},
-      name: TicTacToe.service_name(game_id)
+      name: Callbreak.service_name(game_id)
     )
   end
 
   def move(game_id, player_id, {_, _} = move) do
-    GenServer.call(TicTacToe.service_name(game_id), {:move, player_id, move})
+    GenServer.call(Callbreak.service_name(game_id), {:move, player_id, move})
   end
 
   ## callback

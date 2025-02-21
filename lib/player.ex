@@ -1,7 +1,7 @@
 defmodule TicTacToe.Player do
   use GenServer
 
-  alias TicTacToe.{GameServer}
+  alias TicTacToe.{GameServer,Deck}
 
   def notify(player_id, instruction) do
     GenServer.cast(TicTacToe.service_name(player_id), instruction)
