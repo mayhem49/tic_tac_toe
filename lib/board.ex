@@ -1,13 +1,13 @@
 defmodule Board do
   # TODO: remove symbols altogether
 
-  @enforce_keys [:size, :state, :played_cells, :status]
-  defstruct [:size, :state, :played_cells, :status]
+  @enforce_keys [:size, :state, :played_cells, :last_played]
+  defstruct @enforce_keys
 
   @players [:o, :x]
-  @default_size 3
 
-  # TODO: create a nxn board 
+  # TODO: create a nxn board  
+  # ^^
   def new(size) do
     state =
       1..size
@@ -18,27 +18,76 @@ defmodule Board do
       end)
       |> Map.new()
 
-    %__MODULE__{state: state, size: size, played_cells: 0, status: :running}
+    %__MODULE__{state: state, size: size, played_cells: 0, last_played: nil}
   end
 
-  def new(), do: new(@default_size)
-
-  def play(%{state: state} = board, player, {x, y} = coord)
+  # can only play in empty cell
+  # ^^
+  def play(%Board{state: state} = board, player, {x, y} = cell)
       when player in @players do
-    case Map.fetch(state, coord) do
+    case Map.fetch(state, cell) do
       :error ->
-        {:error, "Invalid coordinate (#{x},#{y})"}
+        {:error, "Invalid cell (#{x},#{y})"}
 
       {:ok, nil} ->
-        new_state = Map.put(state, coord, player)
-        # WARN: new_board is in invalid state since it has incorrect game_status, solution?
-        new_board = %{board | state: new_state, played_cells: board.played_cells + 1}
-        game_status = evaluate_game_status(new_board)
-        {:ok, %{new_board | status: game_status}}
+        new_board = %{
+          board
+          | state: Map.put(state, cell, player),
+            played_cells: board.played_cells + 1,
+            last_played: cell
+        }
+
+        game_state = evaluate_game_state(new_board, player)
+        {:ok, new_board, game_state}
 
       {:ok, _error} ->
-        {:error, "Already played in coordinates (#{x},#{y}"}
+        {:error, "Already played in cell (#{x},#{y}"}
     end
+  end
+
+  def evaluate_game_state(%Board{} = board, last_player) do
+    # only the player who made the last move can be winner, so no need to check winner for opponent
+    # todo: instead of checking winner now, which needs to iterate all the board states ,
+    # check only on the row, col and diagonal on which the last move is made
+    cond do
+      is_winner?(board, last_player, board.last_played) -> {:completed, {:winner, last_player}}
+      all_cells_played?(board) -> {:completed, :draw}
+      true -> :running
+    end
+  end
+
+  # The game can only be won by completing a row, column, or diagonal
+  # that contains the played cell. Only check for these conditions.
+  def is_winner?(%{size: size, state: state} = board, player, {row, col}) do
+    # row
+    row? = Enum.all?(1..size, fn y -> player == Map.get(state, {row, y}) end)
+
+    # col
+    col? = row? or Enum.all?(1..size, fn x -> player == Map.get(state, {x, col}) end)
+
+    # diagonal 
+      col? or (is_diagonal_cell?(board, {row, col}) and is_diagonal_completed?(board, player))
+  end
+
+  # ^^
+  defp is_diagonal_cell?(%{size: size}, {row, col}) do
+    # main-diagonal and anti-diagonal
+    (row == col) or (row + col == size + 1)
+  end
+
+  # ^^
+  defp is_diagonal_completed?(%{size: size, state: state}, player) do
+    is_main_diagonal_completed? =
+      Enum.all?(1..size, fn row ->
+        player == Map.get(state, {row, row})
+      end)
+
+
+    # anti-diagonal
+    is_main_diagonal_completed? or
+      Enum.all?(1..size, fn row ->
+        player == Map.get(state, {row, size + 1 - row})
+      end)
   end
 
   defp is_winner?(%{size: size, state: state}, player)
@@ -81,32 +130,6 @@ defmodule Board do
   # at the end of the match is_winner?() is called twice once by is_draw and once by the game module to check
   defp all_cells_played?(%Board{size: size} = board), do: board.played_cells == size * size
 
-  # @doc """ evaluates the current status of the game, using `state` field.
-  # Used to evalute `status` field of the struct.
-  # """
-  defp evaluate_game_status(%Board{} = board) do
-    [ref_player, _] = @players
-
-    cond do
-      is_winner?(board, ref_player) -> {:winner, ref_player}
-      is_winner?(board, alternate_player(ref_player)) -> {:winner, alternate_player(ref_player)}
-      all_cells_played?(board) -> :draw
-      true -> :running
-    end
-  end
-
-  @doc """
-   status of the game w.r.t `ref_player`>.
-  """
-  def game_status(%Board{status: status}, ref_player) when ref_player in @players do
-    case status do
-      {:winner, ^ref_player} -> :winner
-      {:winner, _alternate_player} -> :loser
-      :draw -> :draw
-      :running -> :running
-    end
-  end
-
   def print(%Board{state: state, size: size} = _board) do
     1..size
     |> Enum.map(fn row ->
@@ -120,82 +143,50 @@ defmodule Board do
     |> TablePrint.print({size, size}, 7)
   end
 
-  defp minmax_get_score(board, maximizing_player) do
-    case game_status(board, maximizing_player) do
-      :winner -> 20
-      :loser -> -20
-      :draw -> 0
-    end
-  end
-
   @doc """
   returns {:ok, move} if any move is possible(running game}
   else returns {:error, reason}
   """
   def minmax(board, maximizing_player) when maximizing_player in @players do
-    {new_board, _score} = minmax(board, maximizing_player, maximizing_player)
-
-    # todo: make minmax function return move instead of new board
-    find_move(board, new_board)
-  end
-
-  defp find_move(board, new_board) do
-    1..board.size
-    |> Enum.find_value(fn row ->
-      col =
-        1..board.size
-        |> Enum.find(fn col ->
-          Map.get(board.state, {row, col}) == nil &&
-            Map.get(new_board.state, {row, col}) != nil
-        end)
-
-      col && {row, col}
-    end)
+    {move, _score} = minmax(board, maximizing_player, maximizing_player, 1)
+    move
   end
 
   # board -> current state of the boarrd
   # current_player ->  player whose turn to play
-  defp minmax(%Board{status: :running} = board, maximizing_player, current_player) do
-    max_value = -20
-    min_value = 20
+  # https://www.neverstopbuilding.com/blog/minimax
 
-    {desired, initial_value} =
-      if current_player == maximizing_player, do: {:max, max_value}, else: {:min, min_value}
+  # current player wants to maximize/minimze
+  # maximizing_player wants to minimize
+  defp minmax(%Board{} = board, maximizing_player, current_player, depth) do
+    desired = if current_player == maximizing_player, do: :max, else: :min
 
     board
     |> get_possible_moves()
-    |> Enum.reduce(
-      {board, initial_value},
-      fn move, {curr_board, minmax_value} ->
-        {:ok, new_board} = Board.play(board, current_player, move)
+    #|> IO.inspect(label: :possible)
+    |> Enum.map(fn move ->
+      {:ok, new_board, game_state} = Board.play(board, current_player, move)
 
-        # print(new_board)
+      case game_state do
+        :running ->
+          {_, score} = minmax(new_board, maximizing_player, alternate_player(current_player), depth + 1)
+        {move, score}
 
-        {_board, score} = minmax(new_board, maximizing_player, alternate_player(current_player))
+        {:completed, :draw} ->
+          {move, 0}
 
-        # IO.puts("")
-        # IO.puts("")
-        # print(new_board)
-
-        cond do
-          desired == :max && score >= minmax_value ->
-            # IO.inspect(:max)
-            {new_board, score}
-
-          desired == :min && score <= minmax_value ->
-            # IO.inspect(:min)
-            {new_board, score}
-
-          true ->
-            # IO.inspect(:no_change)
-            {curr_board, minmax_value}
-        end
+        {:completed, {:winner, _}} ->
+          score = if desired == :max, do: 20 - depth, else: depth - 20
+          {move, score}
       end
-    )
-  end
-
-  defp minmax(%Board{} = board, maximizing_player, _current_player) do
-    {board, minmax_get_score(board, maximizing_player)}
+    end)
+    #|> IO.inspect(label: :final)
+    |> then(fn moves -> 
+      if desired == :max,
+        do: Enum.max_by(moves, fn {_, score} -> score end),
+        else: Enum.min_by(moves, fn {_, score} -> score end)
+    end
+      )
   end
 
   defp get_possible_moves(%{state: state, size: size}) do
@@ -217,28 +208,20 @@ defmodule Board do
   defp alternate_player(:o), do: :x
   defp alternate_player(:x), do: :o
 
-  def random do
-    {:ok, board} =
-      Board.new()
-      |> test_play(:o, {3, 2})
-      |> test_play(:x, {1, 1})
-      |> test_play(:o, {1, 2})
-      |> test_play(:x, {2, 2})
-      |> test_play(:o, {1, 3})
+  ## for testing purpose
+  # def test() do
+  #   {:ok, b, _} = Board.new(3)
+  #   |> test_play(:o, {1,1})
+  #   |> test_play(:x, {1,2})
+  #   |> test_play(:o, {2,1})
+  #   b
+  # end
 
-    # |> test_play(:x, {2, 3})
-    # |> test_play(:o, {3, 3})
+  # defp test_play({:ok, board, _}, player, cell) do
+  #   Board.play(board, player, cell)
+  # end
 
-    IO.inspect("intitial_board")
-    print(board)
-    board
-  end
-
-  defp test_play({:ok, board}, player, coord) do
-    Board.play(board, player, coord)
-  end
-
-  defp test_play(board, player, coord) do
-    Board.play(board, player, coord)
-  end
+  # defp test_play(board, player, cell) do
+  #   Board.play(board, player, cell)
+  # end
 end
