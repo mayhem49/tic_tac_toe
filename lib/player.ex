@@ -1,12 +1,11 @@
 defmodule TicTacToe.Player do
   use GenServer
 
-  alias TicTacToe.{GameServer,Deck}
+  alias TicTacToe.{GameServer, Deck}
 
   def notify(player_id, instruction) do
     GenServer.cast(TicTacToe.service_name(player_id), instruction)
   end
-
 
   def child_spec({_, player_id, _, _} = arg) do
     %{
@@ -50,7 +49,8 @@ defmodule TicTacToe.Player do
           read_move(state)
 
         :autoplay ->
-          Board.minmax(state.board, state.symbol)
+          # Board.minmax(state.board, state.symbol)
+          TicTacToe.MinMax.solve(state.board, state.symbol)
       end
 
     GameServer.move(game_id, player_id, move)
@@ -92,7 +92,7 @@ defmodule TicTacToe.Player do
 
   @impl true
   def handle_cast({:move_success, {x, y} = coord}, state) do
-    {:ok, board, _ } = Board.play(state.board, state.symbol, coord)
+    {:ok, board, _} = Board.play(state.board, state.symbol, coord)
     print_message(state, "move success(#{x}, #{y})")
     {:noreply, %{state | board: board}}
   end

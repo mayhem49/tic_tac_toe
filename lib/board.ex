@@ -43,9 +43,14 @@ defmodule Board do
   def evaluate_game_state(%Board{} = board, last_player) do
     # only the player who made the last move can be winner, so no need to check winner for opponent
     cond do
-      is_winner_at_last_move?(board, last_player, board.last_played) -> {:completed, {:winner, last_player}}
-      all_cells_played?(board) -> {:completed, :draw}
-      true -> :running
+      is_winner_at_last_move?(board, last_player, board.last_played) ->
+        {:completed, {:winner, last_player}}
+
+      all_cells_played?(board) ->
+        {:completed, :draw}
+
+      true ->
+        :running
     end
   end
 
@@ -59,12 +64,12 @@ defmodule Board do
     col? = row? or Enum.all?(1..size, fn x -> player == Map.get(state, {x, col}) end)
 
     # diagonal 
-      col? or (is_diagonal_cell?(board, {row, col}) and is_diagonal_completed?(board, player))
+    col? or (is_diagonal_cell?(board, {row, col}) and is_diagonal_completed?(board, player))
   end
 
   defp is_diagonal_cell?(%{size: size}, {row, col}) do
     # main-diagonal and anti-diagonal
-    (row == col) or (row + col == size + 1)
+    row == col or row + col == size + 1
   end
 
   defp is_diagonal_completed?(%{size: size, state: state}, player) do
@@ -96,66 +101,13 @@ defmodule Board do
     |> TablePrint.print({size, size}, 7)
   end
 
-  @doc """
-  returns {:ok, move} if any move is possible(running game}
-  else returns {:error, reason}
-  """
-  def minmax(board, maximizing_player) when maximizing_player in @players do
-    {move, _score} = minmax(board, maximizing_player, maximizing_player, 1)
-    move
-  end
-
-  # board -> current state of the boarrd
-  # current_player ->  player whose turn to play
-  # https://www.neverstopbuilding.com/blog/minimax
-
-  # current player wants to maximize/minimze
-  # maximizing_player wants to minimize
-  defp minmax(%Board{} = board, maximizing_player, current_player, depth) do
-    desired = if current_player == maximizing_player, do: :max, else: :min
-
-    board
-    |> get_possible_moves()
-    #|> IO.inspect(label: :possible)
-    |> Enum.map(fn move ->
-      {:ok, new_board, game_state} = Board.play(board, current_player, move)
-
-      case game_state do
-        :running ->
-          {_, score} = minmax(new_board, maximizing_player, alternate_player(current_player), depth + 1)
-        {move, score}
-
-        {:completed, :draw} ->
-          {move, 0}
-
-        {:completed, {:winner, _}} ->
-          score = if desired == :max, do: 20 - depth, else: depth - 20
-          {move, score}
-      end
+  def get_possible_moves(%{state: state, size: size}) do
+    state
+    |> Enum.filter(fn
+      {cell, nil} -> true
+      {cell, value} when value in [:o, :x] -> false
     end)
-    #|> IO.inspect(label: :final)
-    |> then(fn moves -> 
-      if desired == :max,
-        do: Enum.max_by(moves, fn {_, score} -> score end),
-        else: Enum.min_by(moves, fn {_, score} -> score end)
-    end
-      )
-  end
-
-  defp get_possible_moves(%{state: state, size: size}) do
-    1..size
-    |> Enum.reduce([], fn row, acc ->
-      1..size
-      |> Enum.reduce(acc, fn col, acc ->
-        case Map.get(state, {row, col}) do
-          nil ->
-            [{row, col} | acc]
-
-          _ ->
-            acc
-        end
-      end)
-    end)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp alternate_player(:o), do: :x

@@ -10,7 +10,7 @@ defmodule BoardTest do
 
     assert Map.fetch(state, {0, 0}) == :error
     assert Map.fetch(state, {2, 0}) == :error
-        
+
     board = Board.new(3)
     state = board.state
     assert Map.fetch(state, {0, 2}) == :error
@@ -85,8 +85,8 @@ defmodule BoardTest do
       |> play(:o, {3, 1})
 
     assert {:completed, {:winner, :o}} == game_state
-    #assert :winner = Board.game_status(board, :o)
-    #assert :loser = Board.game_status(board, :x)
+    # assert :winner = Board.game_status(board, :o)
+    # assert :loser = Board.game_status(board, :x)
 
     # check diagonal winner 
     {:ok, board, game_state} =

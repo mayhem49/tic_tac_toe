@@ -36,8 +36,9 @@ defmodule TicTacToe.Game do
       state: :running
     }
 
-    IO.inspect player1
-    IO.inspect player2
+    IO.inspect(player1)
+    IO.inspect(player2)
+
     game
     |> notify_current_player(:move)
     |> return_intructions_and_game()
@@ -87,11 +88,15 @@ defmodule TicTacToe.Game do
             game |> notify_both_players(:draw)
 
           {:winner, winner} ->
-            winner_symbol = Enum.find_value(game.player_symbols, 
-              fn {player, symbol} -> if player == game.current_player, do: symbol end)
+            winner_symbol =
+              Enum.find_value(
+                game.player_symbols,
+                fn {player, symbol} -> if player == game.current_player, do: symbol end
+              )
 
             # This check is just for safety since only current player can be winner
             if winner_symbol != winner, do: raise("Only currrent player can be winner")
+
             game
             |> notify_current_player(:winner)
             |> notify_alternate_player(:loser)

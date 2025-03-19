@@ -73,6 +73,7 @@ defmodule GameTest do
 
   test "cannot play after game end" do
     # TODO
+    # write test for min max
   end
 
   defp create_instruction(player, notification),
