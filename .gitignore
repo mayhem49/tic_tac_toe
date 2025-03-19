@@ -24,3 +24,5 @@ tic_tac_toe-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+.tasks

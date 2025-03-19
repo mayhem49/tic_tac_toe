@@ -7,6 +7,7 @@ defmodule TicTacToe do
       TicTacToe.GameSupervisor
     ]
 
+    # restart all child process when any of them terminates
     return_value = Supervisor.start_link(children, strategy: :one_for_all)
 
     TicTacToe.GameServer.start_game(:game, {:player, :interactive}, {:bot, :autoplay})
